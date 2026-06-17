@@ -15,6 +15,7 @@ import {
 } from "../../../../script.js";
 
 import { applyLocale } from "../../../../scripts/i18n.js";
+import { ConnectionManagerRequestService } from "../../shared.js";
 
 // Keep track of where your extension is located, name should match repo name
 const extensionName = "SillyTavern-InputFeedback";
@@ -25,6 +26,9 @@ const defaultSettings = {
   autoNew: false,
   autoEdit: false,
   folded: false,
+  useConnectionProfile: false,
+  connectionProfile: "",
+  maxTokens: 1024,
   template: `Previous Messages:
 {{previousMessages}}
 
@@ -65,6 +69,13 @@ async function loadSettings() {
     Object.assign(extension_settings[extensionName], defaultSettings);
   }
 
+  // Migrate missing keys for users upgrading from an older version
+  for (const key of Object.keys(defaultSettings)) {
+    if (!Object.hasOwn(extension_settings[extensionName], key)) {
+      extension_settings[extensionName][key] = defaultSettings[key];
+    }
+  }
+
   // Updating settings in the UI
   $("#input-feedback-enabled")
     .prop("checked", extension_settings[extensionName].enabled)
@@ -87,6 +98,28 @@ async function loadSettings() {
   $("#input-feedback-num-prev-msgs")
     .val(extension_settings[extensionName].numPrevMsgs)
     .trigger("input");
+  $("#input-feedback-use-connection-profile")
+    .prop("checked", extension_settings[extensionName].useConnectionProfile)
+    .trigger("input");
+  $("#input-feedback-max-tokens")
+    .val(extension_settings[extensionName].maxTokens)
+    .trigger("input");
+
+  // Set up the connection profile dropdown (provided by the Connection Manager extension)
+  try {
+    ConnectionManagerRequestService.handleDropdown(
+      "#input-feedback-connection-profile",
+      extension_settings[extensionName].connectionProfile,
+      (profile) => {
+        extension_settings[extensionName].connectionProfile = profile?.id ?? "";
+        saveSettingsDebounced();
+      },
+    );
+  } catch (error) {
+    // Connection Manager extension might be disabled
+    console.warn("[InputFeedback] Connection Manager is not available:", error);
+    $("#input-feedback-connection-profile-block").hide();
+  }
 }
 
 function getMessage(messageId) {
@@ -105,7 +138,14 @@ function getPreviousMessages(messageId, numPrevMsgs) {
 }
 
 async function getFeedback(messageId) {
-  const { numPrevMsgs, prompt: feedbackPrompt, template } = extensionSettings;
+  const {
+    numPrevMsgs,
+    prompt: feedbackPrompt,
+    template,
+    useConnectionProfile,
+    connectionProfile,
+    maxTokens,
+  } = extensionSettings;
   const message = getMessage(messageId);
 
   if (typeof message.extra !== "object") {
@@ -120,7 +160,29 @@ async function getFeedback(messageId) {
     .replace(/{{prompt}}/i, feedbackPrompt);
 
   showLoading(messageId);
-  const feedback = await generateRaw(prompt, null, false, true);
+
+  let feedback;
+  try {
+    if (useConnectionProfile && connectionProfile) {
+      const result = await ConnectionManagerRequestService.sendRequest(
+        connectionProfile,
+        prompt,
+        Number(maxTokens) || 1024,
+      );
+      feedback = result?.content ?? "";
+    } else {
+      feedback = await generateRaw(prompt, null, false, true);
+    }
+  } catch (error) {
+    console.error("[InputFeedback] Failed to get feedback:", error);
+    toastr.error(
+      error?.message || "Failed to get feedback.",
+      "Input Feedback"
+    );
+    hideLoading(messageId);
+    return;
+  }
+
   hideLoading(messageId);
 
   message.extra.inputFeedback = {
@@ -251,6 +313,18 @@ function onNumPrevMsgsInput() {
   saveSettingsDebounced();
 }
 
+function onUseConnectionProfileInput(event) {
+  const value = Boolean($(event.target).prop("checked"));
+  extension_settings[extensionName].useConnectionProfile = value;
+  saveSettingsDebounced();
+}
+
+function onMaxTokensInput() {
+  const value = $(this).val();
+  extension_settings[extensionName].maxTokens = Number(value);
+  saveSettingsDebounced();
+}
+
 function onPurgeClick() {
   if (!getCurrentChatId()) {
     toastr.info("No chat selected.");
@@ -367,6 +441,8 @@ jQuery(async () => {
   $("#input-feedback-template").on("input", onTemplateInput);
   $("#input-feedback-prompt").on("input", onPromptInput);
   $("#input-feedback-num-prev-msgs").on("input", onNumPrevMsgsInput);
+  $("#input-feedback-use-connection-profile").on("input", onUseConnectionProfileInput);
+  $("#input-feedback-max-tokens").on("input", onMaxTokensInput);
   $("#input-feedback-purge").on("click", onPurgeClick);
 
   // Load settings when starting things up (if you have any)
