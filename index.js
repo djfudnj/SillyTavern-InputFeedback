@@ -29,7 +29,6 @@ const defaultSettings = {
   autoEdit: false,
   folded: false,
   provider: "main",
-  chatCompletionSource: "vertexai",
   model: "gemini-2.5-flash",
   maxTokens: 8192,
   template: `Previous Messages:
@@ -101,12 +100,9 @@ async function loadSettings() {
   $("#input-feedback-num-prev-msgs")
     .val(extension_settings[extensionName].numPrevMsgs)
     .trigger("input");
-  $("#input-feedback-provider")
-    .val(extension_settings[extensionName].provider)
-    .trigger("input");
-  $("#input-feedback-model")
-    .val(extension_settings[extensionName].model)
-    .trigger("input");
+  const savedProvider = extension_settings[extensionName].provider || "main";
+  $("#input-feedback-provider").val(savedProvider);
+  updateModelInput(savedProvider);
   $("#input-feedback-max-tokens")
     .val(extension_settings[extensionName].maxTokens)
     .trigger("input");
@@ -127,8 +123,46 @@ function getPreviousMessages(messageId, numPrevMsgs) {
   return previousMessages.join("\n\n");
 }
 
+// provider별 oai_settings 모델 필드 이름
+const PROVIDER_MODEL_FIELD = {
+  vertexai:   "vertexai_model",
+  makersuite: "google_model",
+  openai:     "openai_model",
+  claude:     "claude_model",
+  openrouter: "openrouter_model",
+};
+
+// provider별 chat_completion_source 값
+const PROVIDER_SOURCE = {
+  vertexai:   "vertexai",
+  makersuite: "makersuite",
+  openai:     "openai",
+  claude:     "claude",
+  openrouter: "openrouter",
+};
+
+// provider 변경 시 모델 입력창 업데이트
+function updateModelInput(provider) {
+  if (provider === "main") {
+    $("#input-feedback-direct-settings").hide();
+    return;
+  }
+  $("#input-feedback-direct-settings").show();
+
+  // 저장된 모델이 없으면 oai_settings의 현재 모델을 기본값으로
+  if (!extensionSettings.model) {
+    const field = PROVIDER_MODEL_FIELD[provider];
+    const defaultModel = (field && oai_settings[field]) ? oai_settings[field] : "";
+    if (defaultModel) {
+      $("#input-feedback-model").val(defaultModel);
+      extension_settings[extensionName].model = defaultModel;
+      saveSettingsDebounced();
+    }
+  }
+}
+
 async function callDirectApi(prompt) {
-  const { provider, chatCompletionSource, model, maxTokens } = extensionSettings;
+  const { provider, model, maxTokens } = extensionSettings;
 
   // "main" provider: 메인 API 설정 그대로 사용
   if (provider === "main") {
@@ -136,7 +170,7 @@ async function callDirectApi(prompt) {
   }
 
   // 직접 호출 방식
-  const source = chatCompletionSource || "vertexai";
+  const source = PROVIDER_SOURCE[provider] || provider;
 
   const requestBody = {
     chat_completion_source: source,
@@ -342,15 +376,16 @@ function onNumPrevMsgsInput() {
 function onProviderInput() {
   const value = $(this).val();
   extension_settings[extensionName].provider = value;
-  // provider가 "main"이면 직접설정 UI 숨기기
-  $("#input-feedback-direct-settings").toggle(value !== "main");
   saveSettingsDebounced();
+  updateModelInput(value);
 }
 
 function onModelInput() {
   const value = $(this).val();
-  extension_settings[extensionName].model = value;
-  saveSettingsDebounced();
+  if (value) {
+    extension_settings[extensionName].model = value;
+    saveSettingsDebounced();
+  }
 }
 
 function onMaxTokensInput() {
