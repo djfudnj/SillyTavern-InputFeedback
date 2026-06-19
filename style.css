@@ -8,19 +8,6 @@
   line-height: 1.6; /* [추가] 전체적인 기본 줄 간격 설정 */
 }
 
-/* 헤더 제목 */
-.input-feedback.inline-drawer .inline-drawer-header {
-  color: #fff/*var(--SmartThemeEmColor)*/;
-}
-
-/* [추가] 내부에 들어가는 모든 본문 텍스트 및 제목 색상  */
-.input-feedback.inline-drawer .inline-drawer-content,
-.input-feedback-setting-title,
-.input-feedback-button-container,
-.input-feedback-extension-settings {
-  color: #e0e0e0 !important;
-}
-
 /* [추가] 인풋 피드백 내부의 강조(strong) 및 기타 텍스트 */
 .input-feedback.inline-drawer * {
   color: #e0e0e0;
