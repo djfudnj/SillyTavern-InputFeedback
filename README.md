@@ -29,6 +29,4 @@ AGPL-3.0
 
 ## 수정된 부분
 
-여기를 클릭하면 프로파일에 연결해서 쓸 수 있어요. 체크하지 않을시 기존과 동일
 
-[![5154699365fd5216d3a9713ca4aa54d1.png](https://i.postimg.cc/wjPvz24M/5154699365fd5216d3a9713ca4aa54d1.png)](https://postimg.cc/FYymgy4X)
