@@ -1,4 +1,5 @@
 **Original Repository:** [liyb-gz/SillyTavern-InputFeedback](https://github.com/liyb-gz/SillyTavern-InputFeedback)
+
 This extension is a fork of the original work by liyb-gz.
 
 # SillyTavern Extension: Input feedback
