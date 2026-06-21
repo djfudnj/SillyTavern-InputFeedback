@@ -28,6 +28,12 @@ AGPL-3.0
 
 ***
 
+## Note: 
+
+If the extension does not work properly, you may need to delete the original extension and reinstall this one.
+
+확장이 제대로 작동되지 않는다면, 원래 확장을 삭제 후 이 확장으로 재설치해야 할 수도 있습니다
+
 ## 수정된 부분
 
 ![Screenshot-20260620-222851-Chrome.jpg](https://i.postimg.cc/fLtbXGJy/Screenshot-20260620-222851-Chrome.jpg)
